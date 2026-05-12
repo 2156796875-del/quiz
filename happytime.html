@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>56 Völker Chinas - Kleidungsquiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 烟花特效库 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; }
+        .option-hover { transition: all 0.3s ease; }
+        .option-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen font-sans">
+    <!-- 游戏容器 -->
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <!-- 标题 -->
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-indigo-700 mb-6">
+            Quiz zur traditionellen Kleidung der 56 Völker Chinas
+        </h1>
+
+        <!-- 进度条 -->
+        <div class="w-full bg-gray-200 rounded-full h-4 mb-6">
+            <div id="progressBar" class="bg-green-500 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+
+        <!-- 分数展示 -->
+        <div class="text-center text-xl font-semibold text-purple-600 mb-6">
+            Punktestand: <span id="score">0</span>/150
+        </div>
+
+        <!-- 题目区域 -->
+        <div id="questionContainer" class="bg-white rounded-2xl shadow-xl p-6 mb-8">
+            <p id="questionText" class="text-lg text-gray-800 mb-6 leading-relaxed">Lade das Quiz...</p>
+            
+            <!-- 选项区域 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div id="optA" class="option-hover border-2 rounded-xl p-2 cursor-pointer flex flex-col items-center"></div>
+                <div id="optB" class="option-hover border-2 rounded-xl p-2 cursor-pointer flex flex-col items-center"></div>
+                <div id="optC" class="option-hover border-2 rounded-xl p-2 cursor-pointer flex flex-col items-center"></div>
+            </div>
+        </div>
+
+        <!-- 结果弹窗 -->
+        <div id="resultModal" class="fixed top-0 left-0 w-full h-full bg-black/70 flex items-center justify-center hidden z-50">
+            <div class="bg-white rounded-2xl p-8 text-center max-w-md w-full mx-4">
+                <h2 id="resultTitle" class="text-2xl font-bold mb-4"></h2>
+                <p id="resultScore" class="text-xl mb-6"></p>
+                <button onclick="restartQuiz()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
+                    Neues Quiz starten
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 56个民族数据：名称+图片+介绍
+        const nations = [
+            { name: "Uiguren", img: "uiguren.jpg", desc: "Die Kleidung der Uiguren ist farbenprächtig, Männer und Frauen tragen oft Blumenmützen, die Kleider sind leicht und elegant mit exquisiten Mustern, voller westchinesischer Atmosphäre." },
+            { name: "Tadschiken", img: "tadschiken.jpg", desc: "Männer der Tadschiken tragen Lammfellmützen, Frauen bunte lange Kleider und exquisite Kopfbedeckungen; die Hochlandkleidung ist würdevoll und elegant." },
+            { name: "Kirgisen", img: "kirgisen.jpg", desc: "Die Kleidung der Kirgisen besteht meist aus Pelz und Seide, Männer tragen Lederhüte, Frauen haben aufwendige Kopfbedeckungen, stark nomadischen Stil." },
+            { name: "Achang", img: "achang.jpg", desc: "Die Kleidung der Achang ist einfach und schlicht, Männer tragen kurze Jacken, Frauen Röcke und Kopftücher, frisch und großzügig." },
+            { name: "Bai", img: "bai.jpg", desc: "Die Bai verehren Weiß, Männer tragen weiße Oberteile und schwarze Hosen, Frauen weiße Oberteile und bunte Schürzen, schlicht und schön." },
+            { name: "Bonan", img: "bonan.jpg", desc: "Die Kleidung der Bonan ist einfach und praktisch, Männer tragen weiße Mützen, Frauen Jacken und Gürtel, schlicht und großzügig." },
+            { name: "Blang", img: "blang.jpg", desc: "Die Kleidung der Blang ist hauptsächlich schwarz und blau, Frauen tragen enge Oberteile und Röcke, einfache Kopfbedeckungen, ausgeprägter Volkscharakter." },
+            { name: "Bouyei", img: "bouyei.jpg", desc: "Die Bouyei verwenden gerne blaue Stoffe, Frauen tragen Plisseeröcke und Kopftücher, Batikmuster sind einzigartig." },
+            { name: "Koreanische Volksgruppe", img: "koreaner.jpg", desc: "Die Kleidung der Koreanischen Volksgruppe hat sanfte Linien, Frauen tragen kurze Oberteile und lange Röcke, Männer kurze Jacken und Hosen, frisch und elegant." },
+            { name: "Daur", img: "daur.jpg", desc: "Die Kleidung der Daur besteht hauptsächlich aus Roben mit Pelzverzierungen, ausgeprägter Stil des nördlichen Nomadenvolkes." },
+            { name: "Dai", img: "dai.jpg", desc: "Frauen der Dai tragen enge kurze Oberteile und lange Röcke, leicht und elegant, frische Farben, voller tropischer Atmosphäre." },
+            { name: "Deang", img: "deang.jpg", desc: "Die Kleidung der Deang ist hauptsächlich schwarz und rot, Frauen tragen Taillenbänder, einfache Kleider, urig und großzügig." },
+            { name: "Dongxiang", img: "dongxiang.jpg", desc: "Die Kleidung der Dongxiang ist schlicht und sauber, Männer tragen weiße Mützen, Frauen Kopftücher und Jacken, einfach und würdevoll." },
+            { name: "Dong", img: "dong.jpg", desc: "Die Dong verwenden gerne blaue Stoffe, Frauen tragen Plisseeröcke und Silberschmuck, schlicht und exquisit." },
+            { name: "Dulong", img: "dulong.jpg", desc: "Die Kleidung der Dulong ist einfach und ursprünglich, Männer und Frauen tragen Leinentücher, einfache Kopfbedeckungen, alte Traditionen bewahrend." },
+            { name: "Russische Volksgruppe", img: "russen.jpg", desc: "Die Russische Volksgruppe behält russischen Stil bei, Frauen tragen Kleider und Kopftücher, Männer Anzüge und Lederstiefel, elegant und großzügig." },
+            { name: "Oroqen", img: "oroqen.jpg", desc: "Die Kleidung der Oroqen wird aus Tierhäuten genäht, warm und haltbar, robust und heldenhaft, ausgeprägter Bergjagdstil." },
+            { name: "Ewenki", img: "ewenki.jpg", desc: "Die Kleidung der Ewenki besteht meist aus Pelz und Tierhäuten, weite Ärmel und Roben, starke Atmosphäre des nördlichen Waldvolkes." },
+            { name: "Gaoshan", img: "gaoshan.jpg", desc: "Die Kleidung der Gaoshan ist farbenfroh mit Muschelperlen und Federn verziert, robuste Muster, voller Inselatmosphäre." },
+            { name: "Gelao", img: "gelao.jpg", desc: "Die Tracht der Gelao zeichnet sich besonders durch den von Frauen getragenen „Röhrenrock“aus, die Oberbekleidung beider Geschlechter ist kragenlos, und farblich werden Blau- und Grüntöne bevorzugt. Traditionell tragen Frauen über dem Grundgewand eine ärmellose, vorne kürzere und hinten längere Robe sowie Hakenschuhe, während Männer oft einen Gürtel anlegen, die Tracht gilt als „lebendes Fossil“ in der Geschichte der Nationalkleidung." },
+            { name: "Hani", img: "hani.jpg", desc: "Die Hani-Tracht verwendet als Grundfarbe Schwarz oder Dunkelblau und wird aus handgewebtem, eigenhändig gefärbtem Stoff in über zwanzig Arbeitsschritten gefertigt, sie bewahrt eine reiche Kultur des Terrassenfeldbaus und der Wanderungsgeschichte. Frauen tragen bevorzugt ein rechtsseitig geknöpftes, kragenloses Oberteil, dessen Knopfleiste und Ärmelsäume mit bunten Stickereien eingefasst sind, und legen Silberschmuck wie Silberknöpfe und Silberketten an." },
+            { name: "Kasachen", img: "kasachen.jpg", desc: "Die kasachische Kleidung ist stark von der nomadischen Steppenkultur geprägt, sie wird vielfach aus Tierhäuten wie Schaf- und Fuchsfell gefertigt, ist weit geschnitten und erleichtert das Reiten. Männer tragen im Winter häufig eine spitz zulaufende, vierseitige Fuchsfellmütze („Tumak“), während die Frauentracht farbenreich und variantenreich ist und bestickte Hauben oder Kopftücher bevorzugt werden." },
+            { name: "Han", img: "han.jpg", desc: "Die traditionelle Han-Kleidung (Hanfu) wird seit Jahrtausenden durch den „gekreuzten Kragen mit rechter Überlappung“ (jiaoling youren) geprägt und gliedert sich in zwei Grundformen: getrenntes Ober- und Untergewand sowie einteiliges Gewand. Sie wird aus Materialien wie Seide und Hanf gefertigt und verkörpert die herausragende Ästhetik des Färbens, Webens und Stickens der Han-Kultur, sie ist Ausdruck des Rufes als „Reich der Gewänder und der Kopfzier“." },
+            { name: "Hezhen", img: "hezhe.jpg", desc: "Die Hezhen sind die einzige Nationalität Nordchinas, die Fischhaut als Hauptmaterial für Kleidung verwendet – ein weltweit seltenes Handwerk, das wasserabweisend und strapazierfähig ist. Traditionell tragen Männer wie Frauen lange Gewänder mit Stehkragen und rechter Überlappung aus Fisch- oder Tierhaut, während im Winter vor allem warme Rehfellmäntel getragen werden." },
+            { name: "Hui", img: "hui.jpg", desc: "Hui-Männer tragen für gewöhnlich eine weiße oder schwarze schirmlose Kappe (Gebetskappe), das deutlichste Kennzeichen ihrer Tracht. Frauen folgen dem Brauch des Kopftuchs (Gaitou), das Haar und Nacken bedeckt, je nach Lebensalter werden Farben wie Grün, Blau oder Weiß gewählt." },
+            { name: "Jino", img: "jino.jpg", desc: "Männer der Jino tragen oft ein kragenloses, knopfloses Oberteil mit gerader Knopfleiste in schwarz-weißem Karo, auf dem Rückenteil ist ein quadratischer Stickeinsatz mit dem „Sonnen-Mond-Blumen“-Motiv als Zeichen der Sonnenverehrung aufgenäht. Frauen tragen meist einen kurzen schwarzen Rock mit rotem Saum und eine markante, spitze umhangartige Hanfmütze, die gesamte Tracht weist einen ausgeprägt ursprünglichen und schlichten Charakter auf." },
+            { name: "Gin", img: "jing.jpg", desc: "Die Kleidung der Gin ist den örtlichen Gegebenheiten angepasst und insgesamt schlicht und zweckmäßig, um die Arbeit am Meer zu erleichtern. Frauen tragen darunter ein rautenförmiges Brusttuch, das „Xiongyan“ genannt wird, außen eine enganliegende, kragenlose kurze Jacke mit schmalen Ärmeln und dazu eine lange, weite Hose." },
+            { name: "Jingpo", img: "jingpo.jpg", desc: "Frauen der Jingpo tragen häufig eine schwarze kurze Jacke mit gerader Knopfleiste und einen brokatenen Röhrenrock mit leuchtendem Rot als Grundton, an den Unterschenkeln werden rote Brokat-Wadenbinden getragen. Zum Festschmuck besetzen sie die Schulterpartie der Jacke mit zahlreichen runden, prallen Silberknöpfen und legen mehrere silberne Halsringe und Armreifen an – je mehr Silber, desto tüchtiger und wohlhabender erscheint die Trägerin." },
+            { name: "Lahu", img: "lahu.jpg", desc: "Die Lahu-Tracht zeigt als hervorstechendes Merkmal eine Vorliebe für Schwarz, oft wird schwarzer Stoff als Grundlage verwendet und mit bunten Fäden und Silberknöpfen zu verschiedenen Mustern zusammengefügt – die Farben wirken zugleich tief und lebhaft. Frauen tragen meist ein langes, rechtsgeknöpftes schwarzes Stoffgewand mit hohen Seitenschlitzen, dazu eine lange Hose und einen schwarzen Stoffturban." },
+            { name: "Li", img: "li.jpg", desc: "Die traditionelle Li-Kleidung basiert auf den vier Verfahren Spinnen, Färben, Weben und Sticken, das repräsentative Textil, der „Li-Brokat“, gilt mit mehr als dreitausend Jahren Geschichte als „lebendes Fossil“ der Textilgeschichte. Frauen tragen oft eine kragenlose Jacke mit gerader Knopfleiste und einen Röhrenrock unterschiedlicher Länge, die traditionelle Männertracht ist schlichter und besteht meist aus einer knopflosen Jacke mit gerader Knopfleiste." },
+            { name: "Lisu", img: "lisu.jpg", desc: "Die Frauentracht der Lisu gliedert sich regional in drei Varianten: Weiße Lisu, Schwarze Lisu und Bunte Lisu. Die Weißen Lisu tragen bevorzugt ein rechtsgeknöpftes Oberteil und einen schlichten weißen Hanfrock, die Schwarzen Lisu verwenden meist einen schwarzen Turban und kombinieren ein rechtsgeknöpftes Oberteil mit einer langen Hose. Die Bunten Lisu wiederum schätzen eine ärmellose Weste mit farbiger Borte und einen bodenlangen, mit farbigen Muscheln besetzten Rock – die prächtigste Erscheinungsform." },
+            { name: "Lhoba", img: "lhoba.jpg", desc: "Die Kleidung der Lhoba wird überwiegend aus Pflanzenfasern oder Tierhäuten genäht, eine verbreitete Männertracht besteht aus einem deckenartigen, langen Streifen handgewebten Stoffs, der schräg über den Körper gelegt und mit einem Bambusstab anstelle einer Spange verschlossen wird, sodass Schultern und Arme frei bleiben. Die Frauentracht besteht aus einer kragenlosen, schmalärmeligen Jacke mit gerader Knopfleiste und einem engen Röhrenrock, allgemein werden bunte Halsketten geschätzt, deren Gewicht in der Festtracht mehrere Kilogramm erreichen kann." },
+            { name: "Mandschu", img: "mandschu.jpg", desc: "Die traditionelle Mandschu-Tracht wird durch die Bannerkleidung (Qipao) repräsentiert, sie zeichnet sich durch runden Kragen, weite Vorder- und Rückenteile, verhältnismäßig schmale Ärmel und seitliche Schlitze aus. An den frühen Männergewändern befanden sich zudem hufeisenförmige Ärmelverlängerungen (Pferdehufärmel), die ursprünglich dem Reiten und Bogenschießen dienten und sich später zu einem Höflichkeitssymbol gegenüber Älteren wandelten." },
+            { name: "Maonan", img: "maonan.jpg", desc: "Die traditionelle Maonan-Tracht bevorzugt die Farben Blau und Dunkelblau und meidet Gelb und Weiß, sie wird volkstümlich „Tang-Anzug“ genannt und folgt dem Prinzip „Oberteil zur Hose, kurze Jacke mit schmalen Ärmeln und großer, mit Knopfschlaufen versehener Knopfleiste“. Frauen schätzen ein rechtsgeknöpftes Oberteil mit zwei Zierborten sowie eine weite Hose mit Bordüren, der kunstvolle „Blumen-Bambushut“ der Maonan gilt sowohl als Liebespfand als auch als unverzichtbarer Teil der Mitgift." },
+            { name: "Monba", img: "moinba.jpg", desc: "Die Monba-Kleidung verwendet vielfach Pulu (Wollgewebe) als Material, ist farbenprächtig und variantenreich und ein unverzichtbarer Bestandteil des Alltags. Männer im Gebiet Menyu tragen häufig lange Stulpenstiefel mit rot-schwarzem Pulu-Besatz, während Frauen Röcke mit senkrechten Streifen oder mit farbigen Mustern bestickte Oberteile tragen. Wegen der steilen und schmalen Wege sind weich besohlte Langschäftstiefel allgemein beliebt." },
+            { name: "Miao", img: "miao.jpg", desc: "Die Miao-Tracht ist außerordentlich variantenreich und farbenprächtig, die Frauenfesttracht wird als „Silbergewand“ bezeichnet und ist durch eine Fülle fein gearbeiteter Silberaccessoires gekennzeichnet. Charakteristisch ist der Faltenrock, ergänzt durch eine aufwendig bestickte Schürze, von der Kopfbedeckung über den Kragen bis zu den Wadenbinden finden sich bedeutungsvolle geometrische sowie pflanzliche und tierische Muster." },
+            { name: "Mulam", img: "mulao.jpg", desc: "Die Mulam-Tracht bevorzugt ein tiefes Blaugrau, der Stil ist schlicht, elegant und zurückhaltend, meist mit kleinen Stickereistreifen an Ärmelbündchen und Hosenbeinen verziert. Die traditionelle Frauenkleidung bestand ursprünglich aus einem faltenlosen Röhrenrock, ist heutzutage jedoch oft durch eine große Jacke mit weiter Knopfleiste und eine lange Hose ersetzt, am charakteristischsten sind die von Frauen getragenen Spitzschuhe." },
+            { name: "Naxi", img: "naxi.jpg", desc: "Das markanteste Merkmal der Naxi-Tracht ist der von Frauen auf dem Rücken getragene Schaffellumhang, auf dem sieben bestickte runde Stoffscheiben aufgenäht sind, dies steht sinnbildlich für „unter Sternen und Mond“ und symbolisiert unermüdliche Arbeit. Frauen tragen gewöhnlich ein taillenweites, langärmliges Obergewand, dazu eine ärmellose Weste und darunter eine lange Hose oder einen bis zu den Knöcheln reichenden Faltenrock." },
+            { name: "Shui", img: "shui.jpg", desc: "Die Kleidung der Shui ist hauptsächlich in Blau-, Schwarz- und Grüntönen gehalten, mit Batik und Pferdeschweifstickerei als Kernhandwerk. Frauen tragen vielfältige Kopfbedeckungen, oft mit Silberschmuck verziert, der Stil ist schlicht und elegant." },
+            { name: "Mongolen", img: "mongole.jpg", desc: "Das typische Kleidungsstück der Mongolen ist der Mongolische Mantel mit weiten Ärmeln und langem Saum, der sich für das nomadische Leben in der Steppe eignet. Männer tragen Gürtel und Lederstiefel, Frauen lieben Silberschmuck und Kopfbedeckungen in leuchtenden Farben." },
+            { name: "Zhuang", img: "zhuang.jpg", desc: "Die Kleidung der Zhuang ist auf dunkelblauem Grund gehalten, verziert mit bunten Stickereien und Zhuang-Brocade-Mustern, die oft natürliche Elemente darstellen. Frauen tragen gerne Faltenröcke, die Kopfbedeckungen sind kunstvoll, Silberschmuck ist ein wichtiges Accessoire." },
+            { name: "Tibeter", img: "tibeter.jpg", desc: "Der Tibetische Mantel ist das charakteristische Kleidungsstück mit breiter Taille, großem Kragen und langen Ärmeln, die die Temperatur regulieren. Frauen tragen oft bunte Schürzen (Bangdian) und viel Juwelen- und Silberschmuck, was die Hochlandmerkmale widerspiegelt." },
+            { name: "Yugu", img: "yugur.jpg", desc: "Die Kleidung der Yugu wird oft aus Schafs-/Rinderhaut und Pulu (tibetischer Wollstoff) hergestellt, mit starken Farbkontrasten. Frauen tragen spitze rote Quastenmützen, die Ränder der Mäntel sind bunt besetzt, was Wärme und Schönheit vereint." },
+            { name: "Yi", img: "yi.jpg", desc: "Die Kleidung der Yi ist farbenfroh und mutig, mit Schwarz, Rot und Gelb als Kernfarben, reich verziert mit Stickereien. Die Kopfbedeckungen und Faltenröcke der Frauen sind besonders charakteristisch, Männer tragen oft schwarze Jacken mit Kragen und weite Hosen." },
+            { name: "Yao", img: "yao.jpg", desc: "Die Kleidung der Yao ist oft auf indigefarbenem Stoff gehalten, verziert mit bunten Kreuzstichstickereien, deren Muster kulturelle Bedeutungen tragen. Die Kopfbedeckungen der Frauen sind vielfältig und kunstvoll, Silberschmuck und bunte Fäden sind übliche Verzierungen." },
+            { name: "Xibe", img: "xibo.jpg", desc: "Die Kleidung der Xibe kombiniert Stile der Manchu und Han-Chinesen. Männer tragen Mäntel und Westen, Frauen tragen qipao-ähnliche Kleider. Die Farben sind schlicht, die Stickereien zeigen meist Blumen und geometrische Muster." },
+            { name: "Usbeken", img: "usbeken.jpg", desc: "Die Kleidung der Usbeken besteht hauptsächlich aus Seide und Brokat, ist farbenprächtig und kunstvoll bestickt. Frauen tragen gerne Kleider mit Westen und kleine Blumenmützen (Dopa), der Stil ist stark von westlichen Regionen geprägt." },
+            { name: "Va", img: "va.jpg", desc: "Die Kleidung der Va wird aus selbstgewebtem Stoff hergestellt, hauptsächlich in Schwarz und Rot, verziert mit Silberschmuck und bunten Fäden. Frauen tragen oft ärmellose Oberteile und gestreifte Röcke, die Kopfbedeckungen sind meist Silberreifen oder Stoffwickel." },
+            { name: "Tu", img: "tu.jpg", desc: "Die Kleidung der Tu ist farbenfroh und lebendig, markiert durch Blumenärmel-Shirts (Regenbogenärmel), die den Regenbogen symbolisieren. Frauen tragen „Niuda“-Kopfbedeckungen und weite, langärmelige Röcke mit reichen Stickereimustern." },
+            { name: "Tujia", img: "tujia.jpg", desc: "Die Kleidung der Tujia besteht meist aus blauem Stoff, mit dem „Xilan Kapu“-Webteppich als charakteristisches Merkmal. Frauen tragen Jacken mit großen Kragen und Faltenröcken, Männer tragen kurzärmelige Jacken und binden gerne Kopftücher um den Kopf." },
+            { name: "Tatar", img: "tataren.jpg", desc: "Die Kleidung der Tatar folgt oft europäischen Schnitten, ist farbenprächtig und fein bestickt. Frauen tragen gerne Kleider mit kleinen Westen, Männer tragen kurzärmelige Hemden und Westen, der Stil verbindet westliche und chinesische Merkmale." },
+            { name: "She", img: "she.jpg", desc: "Die Kleidung der She ist hauptsächlich schwarz-blau, verziert mit bunten Stickereien, wobei Phönixmuster das Kernelement sind. Frauen tragen Phönixkronen, Jacken mit großen Kragen und Schürzen, Silberschmuck und bunte Bänder sind wichtige Accessoire." },
+            { name: "Salar", img: "salar.jpg", desc: "Die Kleidung der Salar kombiniert Stile der Hui und Tibeter. Männer tragen weiße Mützen und lange Mäntel, Frauen tragen schlichte Kopftücher und Mäntel. Die Stoffe sind meist Baumwolle, der Stil ist schlicht und praktisch." },
+            { name: "Qiang", img: "qiang.jpg", desc: "Die Kleidung der Qiang besteht hauptsächlich aus Leinen und Baumwolle, das Schafsfell-Westen ist das charakteristische Stück. Frauen tragen bestickte Oberteile und Faltenröcke, Männer tragen lange Mäntel mit Gürtel, die Farben sind schlicht und großzügig." },
+            { name: "Pumi", img: "pumi.jpg", desc: "Die Kleidung der Pumi ist schlicht in Weiß und Blau gehalten, mit Pulu (Wollstoff) und Leinen als Hauptmaterialien. Frauen tragen Jacken mit großen Kragen und Faltenröcken, mit schwarzen Kopftüchern, Männer tragen kurzärmelige Jacken und lange Hosen." },
+            { name: "Nu", img: "nu.jpg", desc: "Die Kleidung der Nu wird oft aus Leinen und Tierhaut hergestellt, mit schlichten Farben und einfachen Mustern. Frauen tragen bestickte Oberteile und gestreifte Röcke, Männer tragen kurzärmelige Leinenjacken und oft Tierfellumhänge." }
+        ];
+
+        // 游戏全局变量
+        let currentQuiz = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswerImg = "";
+
+        // 随机数组工具函数
+        function shuffleArray(arr) {
+            return [...arr].sort(() => Math.random() - 0.5);
+        }
+
+        // 初始化游戏
+        function initQuiz() {
+            // 随机抽取15道题
+            const shuffled = shuffleArray(nations);
+            currentQuiz = shuffled.slice(0, 15);
+            currentQuestionIndex = 0;
+            score = 0;
+            
+            updateProgress();
+            updateScore();
+            loadQuestion();
+        }
+
+        // 加载题目
+        function loadQuestion() {
+            if (currentQuestionIndex >= currentQuiz.length) {
+                showResult();
+                return;
+            }
+
+            const current = currentQuiz[currentQuestionIndex];
+            // 显示题目（不显示民族名称）
+            document.getElementById('questionText').textContent = current.desc;
+            correctAnswerImg = current.img;
+
+            // 生成错误选项
+            let wrongOptions = nations.filter(item => item.img !== correctAnswerImg);
+            wrongOptions = shuffleArray(wrongOptions).slice(0, 2);
+            
+            // 组合所有选项并打乱
+            let options = [
+                { img: current.img, correct: true },
+                { img: wrongOptions[0].img, correct: false },
+                { img: wrongOptions[1].img, correct: false }
+            ];
+            options = shuffleArray(options);
+
+            // 渲染选项
+            const elements = ['A', 'B', 'C'];
+            elements.forEach((key, index) => {
+                const opt = document.getElementById(`opt${key}`);
+                opt.innerHTML = `
+                    <img src="${options[index].img}" alt="Option ${key}" class="w-40 h-56 object-cover rounded-lg mb-2">
+                    <span class="font-bold text-lg">Option ${key}</span>
+                `;
+                opt.className = "option-hover border-2 rounded-xl p-2 cursor-pointer flex flex-col items-center";
+                opt.onclick = () => checkAnswer(options[index].correct, opt);
+            });
+        }
+
+        // 检查答案
+        function checkAnswer(isCorrect, element) {
+            // 禁用所有选项
+            document.querySelectorAll('#optA, #optB, #optC').forEach(opt => opt.onclick = null);
+
+            if (isCorrect) {
+                // 正确：绿色边框+烟花
+                element.classList.add('border-green-500');
+                score += 10;
+                updateScore();
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            } else {
+                // 错误：红色边框+震动
+                element.classList.add('border-red-500', 'shake');
+            }
+
+            // 延迟切换下一题
+            setTimeout(() => {
+                currentQuestionIndex++;
+                updateProgress();
+                loadQuestion();
+            }, 800);
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            const percent = (currentQuestionIndex / currentQuiz.length) * 100;
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+
+        // 更新分数
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        // 显示最终结果
+        function showResult() {
+            const modal = document.getElementById('resultModal');
+            const title = document.getElementById('resultTitle');
+            const scoreText = document.getElementById('resultScore');
+
+            scoreText.textContent = `Dein Ergebnis: ${score}/150 Punkten`;
+
+            if (score === 150) {
+                title.textContent = "Perfekt! 🎆🎉";
+                title.classList.add('text-green-600');
+                // 满分烟花
+                confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 } });
+            } else if (score >= 100) {
+                title.textContent = "Ausgezeichnet!";
+                title.classList.add('text-blue-600');
+            } else if (score >= 60) {
+                title.textContent = "Gut gemacht!";
+                title.classList.add('text-orange-600');
+            } else {
+                title.textContent = "Weiter üben!";
+                title.classList.add('text-gray-600');
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        // 重新开始游戏
+        function restartQuiz() {
+            document.getElementById('resultModal').classList.add('hidden');
+            initQuiz();
+        }
+
+        // 页面加载完成启动游戏
+        window.onload = initQuiz;
+    </script>
+</body>
+</html>
